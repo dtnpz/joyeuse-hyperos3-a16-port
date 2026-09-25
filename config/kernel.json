@@ -1,0 +1,23 @@
+{
+  "source_repo": "dtnpz/kernel_xiaomi_sm6250",
+  "version": "4.14.357",
+  "filesystem_note": "Checked GXT 4.14.357 branches do not currently contain fs/erofs.",
+  "baseline": {
+    "kind": "non-root",
+    "release_tag": "Gxterkernl-joyeuse-4.14.357-rev187",
+    "source_commit": "a27e8c841367fefdf768edc8b24e9bc8cc4778ac",
+    "asset": "Gxterkernl-joyeuse-4.14.357-rev187.zip",
+    "asset_url": "https://github.com/dtnpz/kernel_xiaomi_sm6250/releases/download/Gxterkernl-joyeuse-4.14.357-rev187/Gxterkernl-joyeuse-4.14.357-rev187.zip",
+    "sha256_url": "https://github.com/dtnpz/kernel_xiaomi_sm6250/releases/download/Gxterkernl-joyeuse-4.14.357-rev187/Gxterkernl-joyeuse-4.14.357-rev187.zip.sha256"
+  },
+  "variants": [
+    {
+      "kind": "MULTIKSU",
+      "release_tag": "gxt-4.14.357-MULTIKSU",
+      "source_commit": "ed256b9517ca560399402c2a78dd3f7e37043d92",
+      "asset": "gxt-4.14.357-MULTIKSU.zip",
+      "asset_url": "https://github.com/dtnpz/kernel_xiaomi_sm6250/releases/download/gxt-4.14.357-MULTIKSU/gxt-4.14.357-MULTIKSU.zip",
+      "sha256_url": "https://github.com/dtnpz/kernel_xiaomi_sm6250/releases/download/gxt-4.14.357-MULTIKSU/gxt-4.14.357-MULTIKSU.zip.sha256"
+    }
+  ]
+}
