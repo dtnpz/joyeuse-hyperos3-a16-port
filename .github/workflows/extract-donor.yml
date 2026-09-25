@@ -34,7 +34,7 @@ jobs:
       - name: Install payload dumper build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y liblzma-dev
+          sudo apt-get install -y liblzma-dev android-sdk-libsparse-utils file
 
       - name: Validate configuration
         run: python3 scripts/validate_config.py
@@ -100,6 +100,18 @@ jobs:
       - name: Probe image filesystems
         run: python3 scripts/probe_images.py out
 
+      - name: Collect donor filesystem metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p metadata
+          for name in system system_ext product; do
+            img="out/$name.img"
+            [[ -f "$img" ]] || { echo "missing donor image: $img" >&2; exit 1; }
+            bash scripts/collect_image_metadata.sh "$img" "donor-$name" metadata
+          done
+          python3 scripts/build_compat_report.py metadata donor-compat-preflight.md
+
       - name: Upload extraction report only
         uses: actions/upload-artifact@v4
         with:
@@ -107,4 +119,6 @@ jobs:
           path: |
             payload-partitions.txt
             donor-image-manifest.json
+            donor-compat-preflight.md
+            metadata/
           retention-days: 14
