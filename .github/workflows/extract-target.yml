@@ -1,0 +1,79 @@
+name: Extract target hardware baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "extract-target/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extract-target-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extract-target:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reclaim ephemeral runner disk
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h /
+          for p in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost; do
+            if [ -e "$p" ]; then sudo rm -rf "$p"; fi
+          done
+          sudo apt-get clean || true
+          df -h /
+
+      - name: Validate configuration
+        run: python3 scripts/validate_config.py
+
+      - name: Resolve target stock
+        id: target
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          c=json.load(open("config/target-stock.json"))
+          print("url="+c["url"])
+          print("filename="+c["filename"])
+          print("md5="+c["md5"])
+          PY
+
+      - name: Download and verify target stock
+        env:
+          TARGET_URL: ${{ steps.target.outputs.url }}
+          TARGET_FILE: ${{ steps.target.outputs.filename }}
+          TARGET_MD5: ${{ steps.target.outputs.md5 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 5 --retry-delay 5 --continue-at - -o "$TARGET_FILE" "$TARGET_URL"
+          echo "$TARGET_MD5  $TARGET_FILE" | md5sum -c -
+          df -h /
+
+      - name: Extract selected target images only
+        env:
+          TARGET_FILE: ${{ steps.target.outputs.filename }}
+        run: python3 scripts/extract_target_images.py config/target-stock.json "$TARGET_FILE" target-out
+
+      - name: Probe selected target images
+        run: python3 scripts/probe_images.py target-out
+
+      - name: Rename generic image report
+        run: mv donor-image-manifest.json target-image-manifest.json
+
+      - name: Upload target hardware report only
+        uses: actions/upload-artifact@v4
+        with:
+          name: joyeuse-V14.0.3.0-hardware-manifest
+          path: |
+            target-extract-map.json
+            target-image-manifest.json
+          retention-days: 14
