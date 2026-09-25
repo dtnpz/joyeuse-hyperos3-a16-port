@@ -34,7 +34,7 @@ jobs:
       - name: Install payload dumper build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y liblzma-dev android-sdk-libsparse-utils file
+          sudo apt-get install -y liblzma-dev android-sdk-libsparse-utils file aria2
 
       - name: Validate configuration
         run: python3 scripts/validate_config.py
@@ -75,7 +75,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 5 --retry-delay 5 --continue-at - -o "$DONOR_FILE" "$DONOR_URL"
+          aria2c --continue=true --max-tries=5 --retry-wait=5 \
+            --connect-timeout=30 --timeout=30 \
+            --max-connection-per-server=8 --split=8 --min-split-size=16M \
+            --file-allocation=none --allow-overwrite=true --auto-file-renaming=false \
+            --out="$DONOR_FILE" "$DONOR_URL"
           echo "$DONOR_MD5  $DONOR_FILE" | md5sum -c -
           df -h /
 
