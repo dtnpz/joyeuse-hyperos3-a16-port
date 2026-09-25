@@ -1,0 +1,14 @@
+{
+  "device": "Redmi Note 9 Pro Global",
+  "codename": "joyeuse",
+  "region": "global",
+  "miui": "V14.0.3.0.SJZMIXM",
+  "android": 12,
+  "package_type": "fastboot",
+  "filename": "joyeuse_global_images_V14.0.3.0.SJZMIXM_20230307.0000.00_12.0_global_4ee0ad4d2d.tgz",
+  "url": "https://bigota.d.miui.com/V14.0.3.0.SJZMIXM/joyeuse_global_images_V14.0.3.0.SJZMIXM_20230307.0000.00_12.0_global_4ee0ad4d2d.tgz",
+  "md5": "4ee0ad4d2d680eef5522c27f17ef767b",
+  "role": "clean hardware/vendor reference only",
+  "candidate_extract": ["vendor.img", "odm.img", "dtbo.img", "boot.img"],
+  "warning": "Android 12 stock vendor is not assumed Android 16-compatible. It is the reproducible Xiaomi hardware baseline for audit and selective carry-forward."
+}
