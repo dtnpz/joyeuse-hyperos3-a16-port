@@ -1,0 +1,101 @@
+name: Extract donor userspace
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "extract/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extract-donor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reclaim ephemeral runner disk
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h /
+          for p in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost; do
+            if [ -e "$p" ]; then sudo rm -rf "$p"; fi
+          done
+          sudo apt-get clean || true
+          df -h /
+
+      - name: Validate configuration
+        run: python3 scripts/validate_config.py
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.x"
+          cache: false
+
+      - name: Build pinned payload dumper
+        run: |
+          set -euo pipefail
+          command -v xz
+          go install github.com/ssut/payload-dumper-go@v2.1.0
+          "$(go env GOPATH)/bin/payload-dumper-go" -h >/dev/null
+
+      - name: Resolve donor
+        id: donor
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          c=json.load(open("config/donor.json"))
+          print("url="+c["url"])
+          print("filename="+c["filename"])
+          print("md5="+c["md5"])
+          PY
+
+      - name: Download and verify donor
+        env:
+          DONOR_URL: ${{ steps.donor.outputs.url }}
+          DONOR_FILE: ${{ steps.donor.outputs.filename }}
+          DONOR_MD5: ${{ steps.donor.outputs.md5 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 5 --retry-delay 5 --continue-at - -o "$DONOR_FILE" "$DONOR_URL"
+          echo "$DONOR_MD5  $DONOR_FILE" | md5sum -c -
+          df -h /
+
+      - name: List payload partitions
+        env:
+          DONOR_FILE: ${{ steps.donor.outputs.filename }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$(go env GOPATH)/bin/payload-dumper-go" -l "$DONOR_FILE" | tee payload-partitions.txt
+
+      - name: Extract donor userspace only
+        env:
+          DONOR_FILE: ${{ steps.donor.outputs.filename }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          "$(go env GOPATH)/bin/payload-dumper-go" -c 2 -p system,system_ext,product -o out "$DONOR_FILE"
+          df -h /
+
+      - name: Probe image filesystems
+        run: python3 scripts/probe_images.py out
+
+      - name: Upload extraction report only
+        uses: actions/upload-artifact@v4
+        with:
+          name: creek-OS3.0.304.0-userspace-manifest
+          path: |
+            payload-partitions.txt
+            donor-image-manifest.json
+          retention-days: 14
