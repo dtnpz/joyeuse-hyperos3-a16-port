@@ -13,6 +13,9 @@ concurrency:
   group: extract-target-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  LPTOOLS_COMMIT: 1e13871960cb71ceeba0c780c0878176ca665e53
+
 jobs:
   extract-target:
     runs-on: ubuntu-latest
@@ -30,6 +33,21 @@ jobs:
           done
           sudo apt-get clean || true
           df -h /
+
+      - name: Install sparse-image tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y android-sdk-libsparse-utils file
+
+      - name: Fetch pinned dynamic-partition tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tools/lp
+          base="https://raw.githubusercontent.com/ravindu644/android-lptools-static-x86_64/$LPTOOLS_COMMIT"
+          curl --fail --location --retry 3 -o tools/lp/lpunpack "$base/lpunpack"
+          curl --fail --location --retry 3 -o tools/lp/lpdump "$base/lpdump"
+          chmod +x tools/lp/lpunpack tools/lp/lpdump
 
       - name: Validate configuration
         run: python3 scripts/validate_config.py
@@ -58,13 +76,21 @@ jobs:
           echo "$TARGET_MD5  $TARGET_FILE" | md5sum -c -
           df -h /
 
-      - name: Extract selected target images only
+      - name: Extract target container/images
         env:
           TARGET_FILE: ${{ steps.target.outputs.filename }}
         run: python3 scripts/extract_target_images.py config/target-stock.json "$TARGET_FILE" target-out
 
-      - name: Probe selected target images
-        run: python3 scripts/probe_images.py target-out
+      - name: Delete source archive before expanding super
+        env:
+          TARGET_FILE: ${{ steps.target.outputs.filename }}
+        run: rm -f "$TARGET_FILE" && df -h /
+
+      - name: Prepare vendor/ODM hardware baseline
+        run: bash scripts/prepare_target_hardware.sh target-out target-hardware tools/lp
+
+      - name: Probe hardware images
+        run: python3 scripts/probe_images.py target-hardware
 
       - name: Rename generic image report
         run: mv donor-image-manifest.json target-image-manifest.json
@@ -76,4 +102,6 @@ jobs:
           path: |
             target-extract-map.json
             target-image-manifest.json
+            target-super-layout.txt
+          if-no-files-found: warn
           retention-days: 14
