@@ -17,9 +17,11 @@ copy_if_present boot.img
 copy_if_present dtbo.img
 
 if [[ -f "$IN/vendor.img" ]]; then
-  copy_if_present vendor.img
-  copy_if_present odm.img
-  echo "target hardware layout: direct vendor/odm images"
+  for img in "$IN"/*.img; do
+    [[ -e "$img" ]] || continue
+    cp --reflink=auto "$img" "$OUT/$(basename "$img")"
+  done
+  echo "target hardware layout: direct partition images"
   exit 0
 fi
 
@@ -38,15 +40,23 @@ else
 fi
 
 "$TOOLS/lpdump" "$RAW" > target-super-layout.txt
+python3 scripts/parse_lpdump.py target-super-layout.txt target-super-layout.json
+
 mkdir -p "$IN/lp"
 "$TOOLS/lpunpack" "$RAW" "$IN/lp"
 rm -f "$RAW"
 
-for n in vendor.img odm.img; do
-  if [[ -f "$IN/lp/$n" ]]; then
-    mv "$IN/lp/$n" "$OUT/$n"
-  fi
+# Preserve every target dynamic-partition image. assemble_super.py replaces only
+# system/system_ext/product with donor images and keeps all remaining target
+# partitions (mi_ext, vendor/odm, *_dlkm, etc.) byte-for-byte.
+for img in "$IN"/lp/*.img; do
+  [[ -e "$img" ]] || continue
+  mv "$img" "$OUT/$(basename "$img")"
 done
 
-[[ -f "$OUT/vendor.img" ]] || { echo "super unpack did not produce vendor.img" >&2; exit 1; }
-echo "target hardware layout: dynamic super -> vendor/odm"
+if [[ ! -f "$OUT/vendor.img" && ! -f "$OUT/vendor_a.img" ]]; then
+  echo "super unpack did not produce vendor(.img|_a.img)" >&2
+  exit 1
+fi
+
+echo "target hardware layout: dynamic super -> preserved all dynamic partition images"
