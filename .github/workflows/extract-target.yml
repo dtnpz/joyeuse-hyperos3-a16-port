@@ -37,7 +37,7 @@ jobs:
       - name: Install sparse-image tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y android-sdk-libsparse-utils file
+          sudo apt-get install -y android-sdk-libsparse-utils file aria2
 
       - name: Fetch pinned dynamic-partition tools
         shell: bash
@@ -72,7 +72,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 5 --retry-delay 5 --continue-at - -o "$TARGET_FILE" "$TARGET_URL"
+          aria2c --continue=true --max-tries=5 --retry-wait=5 \
+            --connect-timeout=30 --timeout=30 \
+            --max-connection-per-server=8 --split=8 --min-split-size=16M \
+            --file-allocation=none --allow-overwrite=true --auto-file-renaming=false \
+            --out="$TARGET_FILE" "$TARGET_URL"
           echo "$TARGET_MD5  $TARGET_FILE" | md5sum -c -
           df -h /
 
