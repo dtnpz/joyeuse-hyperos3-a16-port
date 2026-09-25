@@ -5,6 +5,16 @@ import tempfile
 from pathlib import Path
 
 root=Path(__file__).resolve().parents[1]
+
+def run_compose(layout, donor, target, cwd, expect=0):
+    layout_path=cwd/"layout.json"
+    layout_path.write_text(json.dumps(layout))
+    p=subprocess.run([
+        "python3",str(root/"scripts/assemble_super.py"),str(layout_path),str(donor),str(target),
+        str(cwd/"super.img"),"--dry-run"
+    ],cwd=cwd)
+    assert p.returncode==expect,(p.returncode,expect)
+
 with tempfile.TemporaryDirectory() as td:
     td=Path(td)
     donor=td/"donor"; target=td/"target"
@@ -29,17 +39,28 @@ with tempfile.TemporaryDirectory() as td:
             {"name":"vendor","group":"qti_dynamic_partitions","attributes":"readonly","extent_bytes":16*1024*1024}
         ]
     }
-    layout_path=td/"layout.json"
-    layout_path.write_text(json.dumps(layout))
-    subprocess.run([
-        "python3",str(root/"scripts/assemble_super.py"),str(layout_path),str(donor),str(target),
-        str(td/"super.img"),"--dry-run"
-    ],check=True,cwd=td)
+    run_compose(layout,donor,target,td)
     plan=json.loads((td/"super-compose-plan.json").read_text())
     origins={p["name"]:p["origin"] for p in plan["partitions"]}
     assert origins=={"system":"donor","system_ext":"donor","product":"donor","vendor":"target"},origins
     assert plan["device_size"]==64*1024*1024
     assert plan["group_usage"]["qti_dynamic_partitions"]["used"]>0
+
+    # A non-empty preserved target partition may never be silently rebuilt as
+    # zero bytes.
+    bad=json.loads(json.dumps(layout))
+    bad["partitions"].append({
+        "name":"mi_ext",
+        "group":"qti_dynamic_partitions",
+        "attributes":"readonly",
+        "extent_bytes":4096,
+    })
+    run_compose(bad,donor,target,td,expect=5)
+
+    # A framework partition must come from the donor. Falling back to the
+    # target framework is not a valid port.
+    (donor/"system_ext.img").unlink()
+    run_compose(layout,donor,target,td,expect=4)
 
 sample="""Metadata version: 10.0
 Metadata size: 592 bytes
