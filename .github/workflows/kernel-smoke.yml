@@ -43,7 +43,9 @@ jobs:
           curl --fail --location --retry 3 -o "$ASSET" "$ASSET_URL"
           curl --fail --location --retry 3 -o "$ASSET.sha256" "$SHA256_URL"
           cat "$ASSET.sha256"
-          sha256sum -c "$ASSET.sha256"
+          EXPECTED="$(awk 'NR==1 {print $1}' "$ASSET.sha256")"
+          test "${#EXPECTED}" -eq 64
+          echo "$EXPECTED  $ASSET" | sha256sum -c -
 
       - name: Inspect flashable package
         env:
