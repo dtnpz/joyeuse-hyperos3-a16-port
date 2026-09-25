@@ -41,3 +41,11 @@ Last updated: 2026-09-25
 ## EROFS note
 
 The checked GXT 4.14.357 non-root/KSUN/MULTIKSU branches currently do not contain `fs/erofs`. If the exact creek userspace images are EROFS, the preferred next decision is between a validated kernel EROFS backport and a metadata-preserving filesystem rebuild; the pipeline must not silently convert images.
+
+## Port assembly implementation
+
+- Added `parse_lpdump.py` to turn the target's real LP metadata into machine-readable geometry.
+- Added `assemble_super.py` to preserve target-side partitions and replace only `system`, `system_ext`, and `product` from the donor.
+- The composer validates dynamic-partition group capacity before running `lpmake`.
+- The composer refuses donor EROFS images unless EROFS is explicitly allowed after kernel support is proven.
+- Added CI tests for LP metadata parsing and dry-run super composition; the current validation workflow passes.
