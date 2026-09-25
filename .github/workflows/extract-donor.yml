@@ -40,11 +40,15 @@ jobs:
           cache: false
 
       - name: Build pinned payload dumper
+        env:
+          PAYLOAD_DUMPER_COMMIT: c3a50ba8d784764c06143c1f82971cd81a77f9d6
         run: |
           set -euo pipefail
           command -v xz
-          go install github.com/ssut/payload-dumper-go@v2.1.0
-          "$(go env GOPATH)/bin/payload-dumper-go" -h >/dev/null
+          git clone --filter=blob:none https://github.com/ssut/payload-dumper-go.git tools/payload-dumper-go-src
+          git -C tools/payload-dumper-go-src checkout "$PAYLOAD_DUMPER_COMMIT"
+          (cd tools/payload-dumper-go-src && go build -o ../payload-dumper-go .)
+          tools/payload-dumper-go -h >/dev/null
 
       - name: Resolve donor
         id: donor
@@ -76,7 +80,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          "$(go env GOPATH)/bin/payload-dumper-go" -l "$DONOR_FILE" | tee payload-partitions.txt
+          tools/payload-dumper-go -l "$DONOR_FILE" | tee payload-partitions.txt
 
       - name: Extract donor userspace only
         env:
@@ -85,7 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-          "$(go env GOPATH)/bin/payload-dumper-go" -c 2 -p system,system_ext,product -o out "$DONOR_FILE"
+          tools/payload-dumper-go -c 2 -p system,system_ext,product -o out "$DONOR_FILE"
           df -h /
 
       - name: Probe image filesystems
