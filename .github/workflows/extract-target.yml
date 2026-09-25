@@ -95,6 +95,25 @@ jobs:
       - name: Rename generic image report
         run: mv donor-image-manifest.json target-image-manifest.json
 
+      - name: Collect target filesystem metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p metadata
+          found=0
+          for img in target-hardware/*.img; do
+            [[ -e "$img" ]] || continue
+            case "$(file -b "$img" | tr '[:upper:]' '[:lower:]')" in
+              *ext2*|*ext3*|*ext4*|*erofs*)
+                label="target-$(basename "$img" .img)"
+                bash scripts/collect_image_metadata.sh "$img" "$label" metadata
+                found=1
+                ;;
+            esac
+          done
+          [[ "$found" == 1 ]] || { echo "no mountable target filesystem images found" >&2; exit 1; }
+          python3 scripts/build_compat_report.py metadata target-compat-preflight.md
+
       - name: Upload target hardware report only
         uses: actions/upload-artifact@v4
         with:
@@ -103,5 +122,8 @@ jobs:
             target-extract-map.json
             target-image-manifest.json
             target-super-layout.txt
+            target-super-layout.json
+            target-compat-preflight.md
+            metadata/
           if-no-files-found: warn
           retention-days: 14
