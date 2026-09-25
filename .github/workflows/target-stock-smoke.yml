@@ -1,0 +1,61 @@
+name: Target stock smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "target/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: target-stock-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  target-stock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve target stock
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          c=json.load(open("config/target-stock.json"))
+          print("url="+c["url"])
+          print("filename="+c["filename"])
+          PY
+
+      - name: Download pinned Xiaomi fastboot package
+        env:
+          TARGET_URL: ${{ steps.target.outputs.url }}
+          TARGET_FILE: ${{ steps.target.outputs.filename }}
+        run: |
+          set -euo pipefail
+          df -h /
+          curl --fail --location --retry 5 --retry-delay 5 --continue-at - \
+            --output "$TARGET_FILE" "$TARGET_URL"
+
+      - name: Verify clean joyeuse baseline
+        env:
+          TARGET_FILE: ${{ steps.target.outputs.filename }}
+        run: python3 scripts/target_smoke.py config/target-stock.json "$TARGET_FILE"
+
+      - name: Archive listing
+        env:
+          TARGET_FILE: ${{ steps.target.outputs.filename }}
+        run: tar -tzf "$TARGET_FILE" > target-stock-tar-list.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: joyeuse-V14.0.3.0.SJZMIXM-stock-smoke
+          path: |
+            target-stock-manifest.json
+            target-stock-tar-list.txt
+          retention-days: 14
