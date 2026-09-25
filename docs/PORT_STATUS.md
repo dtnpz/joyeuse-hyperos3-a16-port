@@ -13,6 +13,10 @@ Last updated: 2026-09-25
 - Target extraction supports both direct vendor/ODM images and Xiaomi dynamic `super.img`.
 - Dynamic-partition tools are pinned to a fixed upstream commit.
 - Android image metadata/VINTF collection scripts have been added for compatibility analysis.
+- Target dynamic-super extraction now preserves every unpacked partition image, not only vendor/ODM.
+- Target LP text is parsed into `target-super-layout.json` for machine-readable compose geometry.
+- Super composition now fails closed if a required donor framework image is missing or if any non-empty target partition would otherwise be rebuilt empty.
+- Donor and target extraction workflows now collect compact property/VINTF metadata artifacts for the next compatibility pass.
 
 ## CI fixes found from real runs
 
@@ -26,6 +30,7 @@ Last updated: 2026-09-25
 - Donor userspace extraction: extract only `system`, `system_ext`, and `product`; identify exact filesystem types.
 - Target hardware extraction: obtain target `vendor`/ODM from either direct images or `super.img`; record dynamic partition layout.
 - No candidate `super.img` will be emitted until both layouts are known and compatible.
+- The currently running donor run #36151541280 and target run #36151172182 were started before the full-preservation/VINTF workflow updates. Their manifests/layout remain useful for filesystem and geometry discovery; candidate assembly must use the hardened pipeline.
 
 ## Main compatibility gates before first boot candidate
 
@@ -48,4 +53,6 @@ The checked GXT 4.14.357 non-root/KSUN/MULTIKSU branches currently do not contai
 - Added `assemble_super.py` to preserve target-side partitions and replace only `system`, `system_ext`, and `product` from the donor.
 - The composer validates dynamic-partition group capacity before running `lpmake`.
 - The composer refuses donor EROFS images unless EROFS is explicitly allowed after kernel support is proven.
-- Added CI tests for LP metadata parsing and dry-run super composition; the current validation workflow passes.
+- Added CI tests for LP metadata parsing and dry-run super composition.
+- Added regression coverage proving that a missing non-empty target partition exits with code 5 and a missing donor framework image exits with code 4.
+- Validation runs for the preservation, fail-closed, and metadata-collection changes all pass on GitHub-hosted Actions.
