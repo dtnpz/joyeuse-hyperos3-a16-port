@@ -31,6 +31,11 @@ jobs:
           sudo apt-get clean || true
           df -h /
 
+      - name: Install payload dumper build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblzma-dev
+
       - name: Validate configuration
         run: python3 scripts/validate_config.py
 
