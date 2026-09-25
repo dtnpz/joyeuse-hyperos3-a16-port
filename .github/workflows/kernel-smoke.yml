@@ -1,0 +1,63 @@
+name: Verify pinned GXT kernels
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "config/kernel.json"
+      - ".github/workflows/kernel-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-kernel:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        selector: [baseline, multiksu]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve pinned kernel
+        id: k
+        env:
+          SELECTOR: ${{ matrix.selector }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          c=json.load(open("config/kernel.json"))
+          x=c["baseline"] if os.environ["SELECTOR"]=="baseline" else next(v for v in c["variants"] if v["kind"]=="MULTIKSU")
+          for key in ("kind","release_tag","source_commit","asset","asset_url","sha256_url"):
+              print(f"{key}={x[key]}")
+          PY
+
+      - name: Download release asset and checksum
+        env:
+          ASSET: ${{ steps.k.outputs.asset }}
+          ASSET_URL: ${{ steps.k.outputs.asset_url }}
+          SHA256_URL: ${{ steps.k.outputs.sha256_url }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 -o "$ASSET" "$ASSET_URL"
+          curl --fail --location --retry 3 -o "$ASSET.sha256" "$SHA256_URL"
+          cat "$ASSET.sha256"
+          sha256sum -c "$ASSET.sha256"
+
+      - name: Inspect flashable package
+        env:
+          ASSET: ${{ steps.k.outputs.asset }}
+        run: |
+          set -euo pipefail
+          unzip -t "$ASSET"
+          unzip -l "$ASSET" | tee kernel-archive-list.txt
+          if ! unzip -l "$ASSET" | grep -Eq '(^|[[:space:]])(Image|Image.gz|Image.gz-dtb|dtb)([[:space:]]|$)|anykernel|AnyKernel'; then
+            echo "warning: expected kernel payload marker not recognized; review archive list"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kernel-${{ matrix.selector }}-verification
+          path: kernel-archive-list.txt
+          retention-days: 14
