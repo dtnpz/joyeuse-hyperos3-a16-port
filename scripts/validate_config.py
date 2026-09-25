@@ -60,8 +60,9 @@ for dangerous in ("vendor", "odm", "modem", "firmware", "dtbo", "vendor_boot", "
     if dangerous in donor.get("use_partitions", []):
         errors.append(f"unsafe donor partition selected for target: {dangerous}")
 
-if "vendor.img" not in target_stock.get("candidate_extract", []):
-    errors.append("target-stock must retain vendor.img as a candidate hardware baseline")
+hardware_any = target_stock.get("hardware_container_any", [])
+if not hardware_any or not {"super.img", "vendor.img"}.intersection(hardware_any):
+    errors.append("target-stock must accept super.img and/or vendor.img as hardware container")
 
 if errors:
     print("CONFIG INVALID")
