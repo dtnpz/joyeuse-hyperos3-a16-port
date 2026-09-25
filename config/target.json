@@ -1,0 +1,12 @@
+{
+  "device": "Redmi Note 9 Pro",
+  "codename": "joyeuse",
+  "family": "miatoll",
+  "soc": "sm7125",
+  "ram_gb": 6,
+  "kernel_target": "4.14.357",
+  "selinux_goal": "enforcing",
+  "rom_level_spoofing": false,
+  "hardware_from_target": ["vendor", "odm", "firmware", "modem", "nfc", "camera", "audio", "sensors", "wifi", "bluetooth", "dtb", "dtbo"],
+  "notes": "Target vendor/HAL source package is intentionally not pinned yet. Full build must fail closed until it is explicitly supplied."
+}

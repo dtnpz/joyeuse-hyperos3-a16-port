@@ -1,0 +1,9 @@
+*.zip
+*.tgz
+*.img
+*.bin
+work/
+out/
+donor-manifest.json
+donor-zip-list.txt
+__pycache__/

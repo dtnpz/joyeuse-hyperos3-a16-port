@@ -1,0 +1,13 @@
+{
+  "device": "Redmi 15 / POCO M7 4G",
+  "codename": "creek",
+  "region": "global",
+  "hyperos": "OS3.0.304.0.WBOMIXM",
+  "android": 16,
+  "package_type": "recovery",
+  "filename": "creek_global-ota_full-OS3.0.304.0.WBOMIXM-user-16.0-81fbff59ab.zip",
+  "url": "https://bigota.d.miui.com/OS3.0.304.0.WBOMIXM/creek_global-ota_full-OS3.0.304.0.WBOMIXM-user-16.0-81fbff59ab.zip",
+  "md5": "81fbff59ab2bb5e20f93b0ebca7d327d",
+  "use_partitions": ["system", "system_ext", "product"],
+  "never_flash_to_target": ["boot", "init_boot", "vendor_boot", "dtbo", "vbmeta", "vbmeta_system", "vendor", "odm", "modem", "firmware"]
+}

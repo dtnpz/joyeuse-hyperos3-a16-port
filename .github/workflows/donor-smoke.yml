@@ -1,0 +1,72 @@
+name: Donor smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "build/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: donor-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  donor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate configuration
+        run: python3 scripts/validate_config.py
+
+      - name: Resolve donor
+        id: donor
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          c=json.load(open("config/donor.json"))
+          print("url="+c["url"])
+          print("filename="+c["filename"])
+          PY
+
+      - name: Disk before download
+        run: df -h /
+
+      - name: Download pinned Xiaomi recovery package
+        shell: bash
+        env:
+          DONOR_URL: ${{ steps.donor.outputs.url }}
+          DONOR_FILE: ${{ steps.donor.outputs.filename }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 5 --retry-delay 5 --continue-at - \
+            --output "$DONOR_FILE" "$DONOR_URL"
+
+      - name: Verify and inspect OTA
+        env:
+          DONOR_FILE: ${{ steps.donor.outputs.filename }}
+        run: python3 scripts/donor_smoke.py config/donor.json "$DONOR_FILE"
+
+      - name: Record archive listing
+        env:
+          DONOR_FILE: ${{ steps.donor.outputs.filename }}
+        run: unzip -l "$DONOR_FILE" > donor-zip-list.txt
+
+      - name: Upload small donor report
+        uses: actions/upload-artifact@v4
+        with:
+          name: creek-OS3.0.304.0.WBOMIXM-smoke
+          path: |
+            donor-manifest.json
+            donor-zip-list.txt
+          retention-days: 14
+
+      - name: Disk after validation
+        if: always()
+        run: df -h /
